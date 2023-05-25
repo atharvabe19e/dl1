@@ -1,0 +1,70 @@
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.datasets import fashion_mnist
+
+(x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+# Normalize pixel values to range between 0 and 1
+x_train = x_train / 255.0
+x_test = x_test / 255.0
+# Expand dimensions to represent a single grayscale channel
+x_train = np.expand_dims(x_train, axis=-1) #the last dimension
+x_test = np.expand_dims(x_test, axis=-1)
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import *
+model = Sequential([
+    #window size =32
+    #kernel_size = step size = (3, 3)
+    Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
+    # (2, 2) = pool_size: integer or tuple of 2 integers, window size over which to take the maximum
+    MaxPooling2D((2, 2)),
+    Conv2D(64, (3, 3), activation='relu'),
+    MaxPooling2D((2, 2)),
+    Flatten(),
+    Dense(64, activation='relu'),
+    Dense(10, activation='softmax')
+])
+
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy', 
+              #sparse_categorical_crossentropy (scce) produces a category index of the most likely matching category.
+              metrics=['accuracy'])
+
+model.fit(x_train, y_train, epochs=10, batch_size=32)
+
+test_loss, test_acc = model.evaluate(x_test, y_test)
+print('Test loss:', test_loss)
+print('Test accuracy: ',test_acc)
+
+model.save('fashion_model.h5')
+# Save the trained model
+
+from tensorflow.keras.models import load_model
+model = load_model('fashion_model.h5')
+# Load the trained model
+
+# Select 5 random indices from the test set
+# size = no.of items
+indices = np.random.randint(0, len(x_test), size=5)
+print(indices)
+
+# Get the corresponding images and labels
+sample_images = x_test[indices]
+sample_labels = y_test[indices]
+
+predictions = model.predict(sample_images)
+
+class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+
+# argmax() function returns indices of the max element of the array in a particular axis. 
+predicted_labels = np.argmax(predictions, axis=1)
+predicted_class_names = [class_names[label] for label in predicted_labels]
+
+for i in range(len(sample_images)):
+    plt.imshow(sample_images[i].reshape(28, 28), cmap='gray')
+    plt.title(f'True Label: {class_names[sample_labels[i]]}\nPredicted Label: {predicted_class_names[i]}')
+    plt.axis('off')
+    plt.show()
+
