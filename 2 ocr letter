@@ -1,0 +1,86 @@
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import * 
+import matplotlib.pyplot as plt
+
+# Load the OCR letter recognition dataset
+url = 'letter-recognition.data'
+df = pd.read_csv(url, header=None)
+
+# Split the dataset into features and labels
+X = df.iloc[:, 1:].values
+y = df.iloc[:, 0].values
+
+# Encode the labels
+label_encoder = LabelEncoder()
+y = label_encoder.fit_transform(y)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+
+print(X_train)
+
+X_train = X_train / 15.0
+X_test = X_test / 15.0
+
+model = Sequential()
+model.add(Dense(128, activation='relu', input_shape=(16,)))
+model.add(Dropout(0.5))
+model.add(Dense(64, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(26, activation='softmax'))
+
+model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics =['accuracy'])
+
+history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=50, batch_size=12)
+
+# Plot training and validation accuracy
+plt.figure(figsize=(8, 5))
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Model Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend(['Train', 'Test'], loc='upper left')
+plt.show()
+
+# Plot training and validation loss
+plt.figure(figsize=(8, 5))
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Model Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend(['Train', 'Test'], loc='upper right')
+plt.show()
+
+loss, accuracy = model.evaluate(X_test, y_test)
+print("Test accuracy:", accuracy)
+print("Test loss:", loss)
+
+model.save('ocr_model.h5')
+# Save the trained model
+
+
+from tensorflow.keras.models import load_model
+model = load_model('ocr_model.h5')
+# Load the trained model
+
+sample_records = X_test[:1000]
+# Select a few records for classification
+
+# Perform classification
+predictions = model.predict(sample_records)
+
+predicted_labels = np.argmax(predictions, axis=1)
+
+predicted_letters = label_encoder.inverse_transform(predicted_labels)
+actual_letters = label_encoder.inverse_transform(y_test)
+
+# Print the predicted labels and corresponding actual labels
+print("Predicted Labels\tActual Labels")
+for i in range(len(predicted_letters)):
+    print(f"{predicted_letters[i]}\t\t\t{actual_letters[i]}")
